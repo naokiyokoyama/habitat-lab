@@ -445,7 +445,9 @@ class NavGazeMixtureOfExpertsMask(NavGazeMixtureOfExpertsRes):
         self.residuals_on_inactive = config.RL.POLICY.residuals_on_inactive
         self.use_residuals = config.RL.POLICY.use_residuals
         self.dont_digitize = config.RL.POLICY.dont_digitize
-        self.selective_corrective = config.RL.POLICY.get("selective_corrective", False)
+        self.selective_corrective = config.RL.POLICY.get(
+            "selective_corrective", False
+        )
         self.nav_action_mask = None
         self.gaze_action_mask = None
         self.place_action_mask = None
@@ -829,7 +831,10 @@ class NavGazeMixtureOfExpertsMaskCombo(NavGazeMixtureOfExpertsMask):
         self.num_combos = num_combos
 
         """Nav, Gaze, NavGaze | Place, NavPlace"""
-        filter_valid_combos = lambda x: [i for i in x if i < num_combos]
+
+        def filter_valid_combos(x):
+            return [i for i in x if i < num_combos]
+
         self.nav_combo_ids = filter_valid_combos([0, 2, 4])
         self.gaze_combo_ids = filter_valid_combos([1, 2])
         self.place_combo_ids = filter_valid_combos([3, 4])
