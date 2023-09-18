@@ -5,7 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-import sys
 import time
 from typing import Any, ClassVar, Dict, List, Tuple, Union
 
@@ -23,14 +22,12 @@ from habitat_baselines.utils.common import (
     poll_checkpoint_folder,
 )
 
-sys.path.insert(0, "./")
-import numpy as np
+import sys
 
+sys.path.insert(0, "./")
 try:
-    from orp.controllers.base_ctrls import *
-    from orp.dataset import OrpNavDatasetV0
     from orp.env_aux import *
-    from orp.sim.simulator import OrpSim
+    from orp.controllers.base_ctrls import *
 except:
     pass
 import math
@@ -155,7 +152,6 @@ class BaseTrainer:
         import sys
 
         sys.path.insert(0, "./")
-        from method.orp_log_adapter import CustomLogger
         from orp_env_adapter import get_hab_args
 
         args = get_hab_args(self.config, "./config.yaml")
@@ -231,8 +227,6 @@ class BaseTrainer:
     def _eval_checkpoint_nodes(self, checkpoint_path, checkpoint_index, args):
         import random
         import string
-
-        from method.orp_log_adapter import CustomLogger
 
         if "EVAL_NODE" in self.config:
             if isinstance(self.config.EVAL_NODE, str):
@@ -315,7 +309,6 @@ class BaseTrainer:
             for k, v in all_ckpts.items()
         }
 
-        max_len = max([len(x) for x in all_ckpts.values()])
         EVAL_COUNT = 11
         fracs = [i / (EVAL_COUNT - 1) for i in range(EVAL_COUNT)]
         for frac in fracs:

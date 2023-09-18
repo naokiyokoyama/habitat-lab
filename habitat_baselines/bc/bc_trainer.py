@@ -263,7 +263,7 @@ class BehavioralCloningMoe(BaseRLTrainer):
 
         sys.path.insert(0, "./")
         from method.orp_policy_adapter import HabPolicy
-        from orp_env_adapter import get_hab_args, get_hab_envs
+        from orp_env_adapter import get_hab_envs
 
         policy = baseline_registry.get_policy(self.policy_name)
         if issubclass(policy, HabPolicy):
