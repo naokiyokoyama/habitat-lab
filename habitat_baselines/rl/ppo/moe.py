@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import torch
 from gym.spaces import Box, Dict
@@ -71,11 +73,17 @@ class NavGazeMixtureOfExpertsRes(MoePolicy):
             self.fuse_states.extend([EXPERT_NAV_UUID, EXPERT_GAZE_UUID])
 
         # Instantiate MoE's own policy
+        num_actions = BASE_ACTIONS + ARM_ACTIONS
+        self.corrective_lateral = (
+            os.environ.get("CORRECTIVE_LATERAL", "0") == "1"
+        )
+        if self.corrective_lateral:
+            num_actions += 1
         super().__init__(
             observation_space,
             fuse_states=self.fuse_states,
             num_gates=self.num_experts,
-            num_actions=BASE_ACTIONS + ARM_ACTIONS,
+            num_actions=num_actions,
             use_rnn=config.RL.POLICY.get("use_rnn", False),
             blackout_gater=config.RL.POLICY.get("blackout_gater", False),
             init=config.RL.POLICY.init,
@@ -214,9 +222,10 @@ class NavGazeMixtureOfExpertsRes(MoePolicy):
         if self.expert_place_policy is not None:
             place_masks = torch.logical_and(masks_device, self.place_masks)
 
-        num_envs = masks.shape[0]
-        if num_envs == 1 and gates is None:
-            gates = torch.ones(num_envs, 3)
+        # num_envs = masks.shape[0]
+        # if num_envs == 1 and gates is None:
+        #     gates = torch.ones(num_envs, 3)
+        num_envs = 2
 
         with torch.no_grad():
             if (
@@ -484,12 +493,15 @@ class NavGazeMixtureOfExpertsMask(NavGazeMixtureOfExpertsRes):
             actions_only=actions_only,
         )
 
+        num_base_actions = BASE_ACTIONS
+        if self.corrective_lateral:
+            num_base_actions += 1
         (
             residual_arm_actions,
             residual_base_actions,
             expert_masks,
         ) = torch.split(
-            action, [ARM_ACTIONS, BASE_ACTIONS, self.num_masks], dim=1
+            action, [ARM_ACTIONS, num_base_actions, self.num_masks], dim=1
         )
 
         # Update_masks could be False for teacher-forcing
@@ -579,6 +591,9 @@ class NavGazeMixtureOfExpertsMask(NavGazeMixtureOfExpertsRes):
             self.arm_action_mask = self.gaze_action_mask
         elif self.num_experts == 3:
             nav_masks, gaze_masks, place_masks = activation_mask
+            num_base_actions = BASE_ACTIONS
+            if self.corrective_lateral:
+                num_base_actions += 1
             (
                 self.nav_action_mask,
                 self.gaze_action_mask,
@@ -586,7 +601,7 @@ class NavGazeMixtureOfExpertsMask(NavGazeMixtureOfExpertsRes):
             ) = [
                 m.repeat(1, num_actions)
                 for m, num_actions in zip(
-                    activation_mask, [BASE_ACTIONS, ARM_ACTIONS, ARM_ACTIONS]
+                    activation_mask, [num_base_actions, ARM_ACTIONS, ARM_ACTIONS]
                 )
             ]
             # Arm mask is the union of the gaze and place masks
@@ -625,6 +640,10 @@ class NavGazeMixtureOfExpertsMask(NavGazeMixtureOfExpertsRes):
         experts_action_arg = torch.cat([gaze_action, nav_action])
 
         # Compile an action based on the actions of the selected experts
+        if self.corrective_lateral:
+            nav_action = torch.cat(
+                [nav_action, torch.zeros(1, device=nav_action.device)]
+            )
         base_action = nav_action * nav_action_mask
         if self.expert_place_policy is None:
             arm_action = gaze_action * gaze_action_mask
@@ -637,7 +656,10 @@ class NavGazeMixtureOfExpertsMask(NavGazeMixtureOfExpertsRes):
         experts_action = torch.cat([arm_action, base_action])
 
         if use_residuals:
-            residual_action = action[: ARM_ACTIONS + BASE_ACTIONS]
+            num_base_actions = BASE_ACTIONS
+            if self.corrective_lateral:
+                num_base_actions += 1
+            residual_action = action[: ARM_ACTIONS + num_base_actions]
             step_action = experts_action + residual_action
         else:
             step_action = experts_action

@@ -187,11 +187,37 @@ class PPOTrainer(BaseRLTrainer):
             )
         if self.config.RL.DDPPO.pretrained:
             orig_state_dict = self.actor_critic.state_dict()
+            pretrained_dict = pretrained_state["state_dict"].copy()
+            if os.environ.get("CORRECTIVE_LATERAL", "0") == "1":
+                # Locate the key containing
+                # "residual_actor.after_module.mu.weight"
+                residual_mu_key = None
+                for k in pretrained_dict.keys():
+                    if "residual_actor.after_module.mu.weight" in k:
+                        residual_mu_key = k
+                        break
+                assert residual_mu_key is not None
+                # Load the key containing
+                # "residual_actor.after_module.mu.weight"
+                if pretrained_dict[residual_mu_key].shape[0] == 6:
+                    # Filter out all keys containing "residual_actor"
+                    pretrained_dict = {
+                        k: v
+                        for k, v in pretrained_dict.items()
+                        if "residual_actor" not in k
+                    }
+                    pretrained_dict.update(
+                        {
+                            k: v
+                            for k, v in orig_state_dict.items()
+                            if "residual_actor" in k
+                        }
+                    )
             try:
                 self.actor_critic.load_state_dict(
                     {
                         k: v if "expert" not in k else orig_state_dict[k]
-                        for k, v in pretrained_state["state_dict"].items()
+                        for k, v in pretrained_dict.items()
                     }
                 )
             except:
@@ -202,7 +228,7 @@ class PPOTrainer(BaseRLTrainer):
                             k[len(prefix) :]: v
                             if "expert" not in k
                             else orig_state_dict[k[len(prefix) :]]
-                            for k, v in pretrained_state["state_dict"].items()
+                            for k, v in pretrained_dict.items()
                         }
                     )
                 except Exception as e:
@@ -1146,18 +1172,21 @@ class PPOTrainer(BaseRLTrainer):
 
         try:
             self.agent.load_state_dict(ckpt_dict["state_dict"])
+            print("Loaded agent state dict successfully")
         except:
             try:
                 self.agent.actor_critic.load_state_dict(
                     ckpt_dict["state_dict"]
                 )
-            except Exception:
+            except Exception as e:
+                print(e)
                 print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 print("WARNING: WEIGHTS WERE NOT PROPERLY LOADED!!")
                 print("(this is usually OK for Sequential Experts)")
                 print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                time.sleep(2)
 
         self.actor_critic = self.agent.actor_critic
 
