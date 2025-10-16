@@ -254,7 +254,7 @@ def get_distrib_size() -> Tuple[int, int, int]:
     elif os.environ.get("SLURM_JOBID", None) is not None:
         local_rank = int(os.environ["SLURM_LOCALID"])
         world_rank = int(os.environ["SLURM_PROCID"])
-        world_size = int(os.environ["SLURM_NTASKS"])
+        world_size = int(os.environ.get("SLURM_NTASKS", "1"))
     # Otherwise setup for just 1 process, this is nice for testing
     else:
         local_rank = 0

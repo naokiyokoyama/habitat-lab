@@ -358,7 +358,10 @@ def overlay_frame(frame, info, additional=None):
         if isinstance(v, str):
             lines.append(f"{k}: {v}")
         else:
-            lines.append(f"{k}: {v:.2f}")
+            try:
+                lines.append(f"{k}: {v:.2f}")
+            except:
+                pass
     if additional is not None:
         lines.extend(additional)
 

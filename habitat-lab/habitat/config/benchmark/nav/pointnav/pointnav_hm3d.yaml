@@ -1,8 +1,10 @@
 # @package _global_
 
 defaults:
-  - pointnav_base
+  - /habitat: habitat_config_base
+  - /habitat/task: pointnav
   - /habitat/dataset/pointnav: hm3d
+  - /habitat/simulator/agents@habitat.simulator.agents.main_agent: depth_agent
   - _self_
 
 habitat:
@@ -11,10 +13,28 @@ habitat:
   simulator:
     agents:
       main_agent:
+        height: 0.88
+        radius: 0.18
         sim_sensors:
-          rgb_sensor:
-            width: 256
-            height: 256
           depth_sensor:
-            width: 256
-            height: 256
+            type: HabitatSimDepthSensor
+            height: 640
+            width: 360
+            position:
+              - 0.0
+              - 1.31
+              - 0.0
+            orientation:
+              - 0.0
+              - 0.0
+              - 0.0
+            hfov: 42
+            sensor_subtype: PINHOLE
+            noise_model: None
+            noise_model_kwargs: { }
+            min_depth: 0.5
+            max_depth: 5.0
+            normalize_depth: true
+    habitat_sim_v0:
+      gpu_device_id: 0
+      allow_sliding: False

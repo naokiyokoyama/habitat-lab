@@ -605,7 +605,7 @@ class SPL(Measure):
         self._metric = ep_success * (
             self._start_end_episode_distance
             / max(
-                self._start_end_episode_distance, self._agent_episode_distance
+                self._start_end_episode_distance, self._agent_episode_distance, 1e-10
             )
         )
 
@@ -640,7 +640,7 @@ class SoftSPL(SPL):
         ].get_metric()
 
         ep_soft_success = max(
-            0, (1 - distance_to_target / self._start_end_episode_distance)
+            0, (1 - distance_to_target / (self._start_end_episode_distance + 1e-10))
         )
 
         self._agent_episode_distance += self._euclidean_distance(
@@ -998,6 +998,21 @@ class DistanceToGoal(Measure):
                 current_position[2],
             )
             self._metric = distance_to_target
+
+        if self._distance_to == "VIEW_POINTS":
+            distance_to_target = self._sim.geodesic_distance(
+                current_position, self._episode_view_points, episode
+            )
+            if distance_to_target < 1.0:
+                closest_goal = self._episode_view_points[
+                    episode._shortest_path_cache.closest_end_point_index
+                ]
+                if current_position[1] != closest_goal[1]:
+                    current_position[1] = closest_goal[1]
+                    distance_to_target = self._sim.geodesic_distance(
+                        current_position, self._episode_view_points, episode
+                    )
+                    self._metric = distance_to_target
 
 
 @registry.register_measure

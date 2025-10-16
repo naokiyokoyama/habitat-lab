@@ -126,9 +126,33 @@ class ObjectNavDatasetV1(PointNavDatasetV1):
         for k, v in deserialized["goals_by_category"].items():
             self.goals_by_category[k] = [self.__deserialize_goal(g) for g in v]
 
+        # Get all unique episode_ids
+        # ep_ids = set(e["episode_id"] for e in deserialized["episodes"])
+        # assert len(ep_ids) > 0, "Episode ids must be unique"
+        # DATASET_PATH = "/mnt/scale_vln_data/exploration_episodes_v3/val_dataset.json"
+        # print(f"Reading whitelist from {DATASET_PATH}")
+        # with open(DATASET_PATH, "r") as f:
+        #     dataset_data = json.load(f)
+        # whitelist = [i["id"].split("-")[1] for i in dataset_data]
+        # print(f"Loaded {len(whitelist)} whitelist entries")
+        filtered = 0
         for i, episode in enumerate(deserialized["episodes"]):
             episode = ObjectGoalNavEpisode(**episode)
-            episode.episode_id = str(i)
+            if "ZSOS_LOG_DIR" in os.environ:
+                from vlfm.utils.log_saver import is_evaluated
+
+                scene_id = os.path.basename(episode.scene_id).split(".")[0]
+                if is_evaluated(episode.episode_id, scene_id):
+                    filtered += 1
+                    continue
+            # episode.episode_id = str(i)
+            whitelist = os.environ.get("whitelist", "")
+            if whitelist:
+                whitelist = whitelist.split(",")
+            else:
+                whitelist = []
+            if len(whitelist) > 0 and str(episode.episode_id) not in whitelist:
+                continue
 
             if scenes_dir is not None:
                 if episode.scene_id.startswith(DEFAULT_SCENE_PATH_PREFIX):
@@ -153,3 +177,6 @@ class ObjectNavDatasetV1(PointNavDatasetV1):
                         path[p_index] = ShortestPathPoint(**point)
 
             self.episodes.append(episode)  # type: ignore [attr-defined]
+
+        if filtered > 0:
+            print(f"Filtered {filtered} episodes that have already been evaluated")
