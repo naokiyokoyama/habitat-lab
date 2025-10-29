@@ -47,6 +47,8 @@ def construct_envs(
             "No scenes to load, multiple process logic relies on being able to split scenes uniquely between processes"
         )
 
+    # Convert to mutable list to avoid ReadonlyConfigError when shuffling
+    scenes = list(scenes)
     random.shuffle(scenes)
 
     scene_splits: List[List[str]] = [[] for _ in range(num_environments)]
